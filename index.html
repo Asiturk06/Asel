@@ -3,30 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Asel'in Zeka Sarayı - 15 Oyun Full</title>
+    <title>Asel'in Zeka Sarayı - Toast Sürümü</title>
     <style>
         :root { --p: #ff007f; --s: #ffe4f1; --d: #ad1457; --w: #ffffff; }
         body { font-family: 'Comic Sans MS', cursive; background: var(--s); margin: 0; padding: 0; text-align: center; overflow-x: hidden; touch-action: manipulation; }
+        
+        /* Başlık ve Fotoğraf */
         header { background: var(--p); color: white; padding: 20px 0; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
         .asel-img { width: 100px; height: 100px; border-radius: 50%; border: 4px solid white; object-fit: cover; background: white; margin-bottom: 10px; }
+
+        /* Ortalanmış Menü */
         .nav-wrapper { background: white; padding: 15px 0; border-bottom: 3px solid var(--p); display: flex; justify-content: center; }
         .menu-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 950px; padding: 0 10px; }
         .menu-item { display: flex; flex-direction: column; align-items: center; padding: 8px; border: 2px solid var(--p); border-radius: 12px; min-width: 65px; cursor: pointer; background: white; transition: 0.2s; }
         .menu-item.active { background: var(--p); color: white; transform: scale(1.1); }
         .menu-item span { font-size: 24px; }
         .menu-item small { font-size: 9px; font-weight: bold; margin-top: 3px; }
+
+        /* Oyun Alanı */
         #game-view { padding: 20px 10px; display: flex; flex-direction: column; align-items: center; min-height: 500px; }
         #instruction { font-weight: bold; color: var(--d); margin-bottom: 15px; font-size: 20px; }
         .game-card { background: white; padding: 20px; border-radius: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 95%; max-width: 450px; min-height: 400px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
+        
+        /* Grid ve Butonlar */
         .grid-4x4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: 100%; }
         .tile { font-size: 28px; background: #fff0f6; border: 2px solid var(--p); border-radius: 12px; height: 70px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         .btn-action { background: var(--d); color: white; border: none; padding: 12px 30px; border-radius: 50px; font-weight: bold; margin: 10px; font-size: 18px; cursor: pointer; }
-        canvas { border: 3px dashed var(--p); background: white; border-radius: 15px; max-width: 100%; touch-action: none; }
         .emoji-big { font-size: 80px; margin: 10px; cursor: pointer; transition: 0.2s; }
-        .emoji-big:hover { transform: scale(1.2); }
+        canvas { border: 3px dashed var(--p); background: white; border-radius: 15px; max-width: 100%; touch-action: none; }
+
+        /* TOAST BİLDİRİM SİSTEMİ */
+        #toast {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(173, 20, 87, 0.9); color: white; padding: 20px 40px;
+            border-radius: 50px; font-size: 24px; font-weight: bold; z-index: 1000;
+            display: none; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            animation: pop 0.3s ease-out; pointer-events: none;
+        }
+        @keyframes pop { 0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; } 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
     </style>
 </head>
 <body>
+
+<div id="toast">Harikasın Asel! 🌟</div>
 
 <header>
     <img src="XFUT2204.JPG" onerror="this.src='https://via.placeholder.com/100/FF007F/FFFFFF?text=Asel'" class="asel-img">
@@ -36,15 +55,22 @@
 <div class="nav-wrapper"><div class="menu-container" id="navbar"></div></div>
 
 <div id="game-view">
-    <div id="instruction">Asel, bir oyun seç ve dehanı göster!</div>
+    <div id="instruction">Asel, oynamak için bir ikon seç!</div>
     <div class="game-card" id="stage">
-        <div style="font-size: 80px;">🚀</div>
-        <h2>Tüm Oyunlar Hazır!</h2>
-        <p>15 farklı zorlu görev seni bekliyor.</p>
+        <div style="font-size: 80px;">🎨</div>
+        <h2>Eğlence Başlıyor!</h2>
+        <p>Hangi oyunu oynamak istersin?</p>
     </div>
 </div>
 
 <script>
+    const toast = document.getElementById('toast');
+    function showToast(msg) {
+        toast.innerText = msg;
+        toast.style.display = 'block';
+        setTimeout(() => { toast.style.display = 'none'; }, 2000);
+    }
+
     const games = [
         {id:'m1', icon:'🧠', label:'Hafıza', t:'16 Kartı Eşleştir'},
         {id:'m2', icon:'👀', label:'Farklı', t:'Gizliyi Bul'},
@@ -54,11 +80,11 @@
         {id:'m6', icon:'📐', label:'Şekil', t:'Kareyi Seç'},
         {id:'m7', icon:'✍️', label:'Çiz', t:'Resim Yap'},
         {id:'m8', icon:'➡️', label:'Yön', t:'Yukarı Bakan Ok?'},
-        {id:'m9', icon:'🦁', label:'Hayvan', t:'Hav Hav Kim?'},
+        {id:'m9', icon:'🦁', label:'Hayvan', t:'Hangisi Havlıyor?'},
         {id:'m10', icon:'🎈', label:'Balon', t:'Hızlı Patlat!'},
-        {id:'m11', icon:'🅰️', label:'Harf', t:'"A" Harfi Nerede?'},
+        {id:'m11', icon:'🅰️', label:'Harf', t:'"A" Harfine Dokun'},
         {id:'m12', icon:'🐘', label:'Boyut', t:'En Küçüğü Bul'},
-        {id:'m13', icon:'😊', label:'Duygu', t:'Kim Üzgün?'},
+        {id:'m13', icon:'😊', label:'Duygu', t:'Hangisi Üzgün?'},
         {id:'m14', icon:'🎹', label:'Sıra', t:'1-16 Sıralama'},
         {id:'m15', icon:'🍉', label:'Besin', t:'Sağlıklı Seç'}
     ];
@@ -83,17 +109,20 @@
     function play(id) {
         stage.innerHTML = '';
         if(id === 'm1') { // HAFIZA
-            let emojis = ['🦁','🦁','🐯','🐯','🦊','🦊','🐼','🐼','🐨','🐨','🐷','🐷','🦓','🦓','🐻','🐻'].sort(()=>Math.random()-0.5);
+            let items = ['🦁','🦁','🐯','🐯','🦊','🦊','🐼','🐼','🐨','🐨','🐷','🐷','🦓','🦓','🐻','🐻'].sort(()=>Math.random()-0.5);
             let flipped = [];
             const grid = document.createElement('div'); grid.className = 'grid-4x4';
-            emojis.forEach(e => {
+            items.forEach(e => {
                 const b = document.createElement('div'); b.className = 'tile'; b.innerText = '?';
                 b.onclick = () => {
                     if(flipped.length < 2 && b.innerText === '?') {
                         b.innerText = e; b.style.background = 'white'; flipped.push(b);
                         if(flipped.length === 2) {
-                            if(flipped[0].innerText === flipped[1].innerText) flipped = [];
-                            else setTimeout(() => { flipped.forEach(x => {x.innerText = '?'; x.style.background='#fff0f6'}); flipped = []; }, 600);
+                            if(flipped[0].innerText === flipped[1].innerText) {
+                                showToast("Doğru Eşleşme! ✅"); flipped = [];
+                            } else {
+                                setTimeout(() => { flipped.forEach(x => {x.innerText = '?'; x.style.background='#fff0f6'}); flipped = []; }, 600);
+                            }
                         }
                     }
                 };
@@ -105,7 +134,7 @@
             let items = Array(15).fill('🍓'); items.push('🍒');
             items.sort(()=>Math.random()-0.5).forEach(it => {
                 const b = document.createElement('div'); b.className = 'tile'; b.innerText = it;
-                b.onclick = () => { if(it==='🍒') { alert("Dahisin Asel!"); play('m2'); } };
+                b.onclick = () => { if(it==='🍒') { showToast("Müthiş Dikkat! 👁️"); play('m2'); } };
                 grid.appendChild(b);
             });
             stage.appendChild(grid);
@@ -114,29 +143,38 @@
             stage.innerHTML = `<h1 style="font-size:70px; color:var(--p)">${a} + ${b}</h1>`;
             [a+b, a+b+2, a+b-3].sort(()=>Math.random()-0.5).forEach(res => {
                 const btn = document.createElement('button'); btn.className = 'btn-action'; btn.innerText = res;
-                btn.onclick = () => { if(res === a+b) { alert("Süper!"); play('m3'); } };
+                btn.onclick = () => { if(res === a+b) { showToast("Süper Zeka! 🧠"); play('m3'); } };
                 stage.appendChild(btn);
             });
         } else if(id === 'm4') { // RENK
-            ['🌸','💎','🍀'].forEach((e, i) => {
+            const colors = ['🌸','💎','🍀'];
+            colors.forEach((e, i) => {
                 const b = document.createElement('div'); b.className = 'emoji-big'; b.innerText = e;
-                b.onclick = () => { if(i===0) { alert("Doğru!"); play('m4'); } };
+                b.onclick = () => { if(i===0) { showToast("Pembe Çiçek! 🌸"); play('m4'); } };
                 stage.appendChild(b);
             });
         } else if(id === 'm5') { // SAYMA
             let n = Math.floor(Math.random()*5)+4;
-            stage.innerHTML = `<div style="font-size:40px">${'🍎'.repeat(n)}</div>`;
+            stage.innerHTML = `<div style="font-size:40px; margin-bottom:20px;">${'🍎'.repeat(n)}</div>`;
             [n, n+1, n-1].sort(()=>Math.random()-0.5).forEach(ans => {
                 const btn = document.createElement('button'); btn.className = 'btn-action'; btn.innerText = ans;
-                btn.onclick = () => { if(ans === n) { alert("Harika!"); play('m5'); } };
+                btn.onclick = () => { if(ans === n) { showToast("Harika Saydın! 🍎"); play('m5'); } };
                 stage.appendChild(btn);
             });
-        } else if(id === 'm6') { // ŞEKİL
-            ['⬛','🔺','🟡'].forEach((s, i) => {
-                const b = document.createElement('div'); b.className = 'emoji-big'; b.innerText = s;
-                b.onclick = () => { if(i===0) { alert("Bildin!"); play('m6'); } };
-                stage.appendChild(b);
+        } else if(id === 'm14') { // SIRALAMA
+            let cur = 1; let ns = Array.from({length: 16}, (_, i) => i + 1).sort(()=>Math.random()-0.5);
+            const g = document.createElement('div'); g.className = 'grid-4x4';
+            ns.forEach(n => {
+                const b = document.createElement('div'); b.className = 'tile'; b.innerText = n;
+                b.onclick = () => { if(n === cur) { b.style.background = '#c8e6c9'; cur++; if(cur>16){showToast("Sayı Kraliçesi! 👑"); play('m14');}} };
+                g.appendChild(b);
             });
+            stage.appendChild(g);
+        } else if(id === 'm10') { // BALON
+            const b = document.createElement('div'); b.className='emoji-big'; b.innerText='🎈';
+            b.style.position='absolute'; b.style.left=Math.random()*70+'%';
+            b.onclick=()=>{ b.innerText='💥'; showToast("GÜÜÜM! 💥"); setTimeout(()=>{ play('m10'); },500); };
+            stage.appendChild(b);
         } else if(id === 'm7') { // ÇİZİM
             const c = document.createElement('canvas'); c.width=350; c.height=350;
             const ctx = c.getContext('2d'); let d=false;
@@ -145,57 +183,31 @@
             c.onmousemove=c.ontouchmove=(e)=>{ if(!d)return; const pos=p(e); ctx.lineWidth=8; ctx.lineCap='round'; ctx.strokeStyle='#ff007f'; ctx.lineTo(pos.x,pos.y); ctx.stroke(); };
             window.onmouseup=window.ontouchend=()=>d=false;
             stage.appendChild(c);
-            const b = document.createElement('button'); b.className='btn-action'; b.innerText='Sil'; b.onclick=()=>ctx.clearRect(0,0,350,350);
-            stage.appendChild(b);
-        } else if(id === 'm8') { // YÖN
-            ['⬆️','⬇️','⬅️','➡️'].forEach((y, i) => {
-                const b = document.createElement('div'); b.className='emoji-big'; b.innerText=y;
-                b.onclick=()=>{ if(i===0){alert("Bravo!"); play('m8');} };
+            const bt = document.createElement('button'); bt.className='btn-action'; bt.innerText='Sil'; bt.onclick=()=>ctx.clearRect(0,0,350,350);
+            stage.appendChild(bt);
+        } else if(id === 'm15') { // SAĞLIKLI BESİN
+            const foods = [['🥦',true],['🍕',false],['🍭',false],['🍟',false]];
+            foods.sort(()=>Math.random()-0.5).forEach(f => {
+                const b = document.createElement('div'); b.className='emoji-big'; b.innerText=f[0];
+                b.onclick=()=>{ if(f[1]){showToast("Çok Sağlıklı! 🥦"); play('m15');} };
                 stage.appendChild(b);
             });
-        } else if(id === 'm9') { // HAYVAN
-            ['🐶','🐱','🐮','🦁'].forEach((h, i) => {
-                const b = document.createElement('div'); b.className='emoji-big'; b.innerText=h;
-                b.onclick=()=>{ if(i===0){alert("Aferin!"); play('m9');} };
+        } else {
+            // Diğer basit eşleme oyunları (Yön, Hayvan, Harf, Boyut, Duygu)
+            const map = {
+                'm8':['⬆️','⬇️','⬅️','➡️',0,"Yukarı! ⬆️"],
+                'm9':['🐶','🐱','🐮','🦁',0,"Hav Hav! 🐶"],
+                'm11':['A','B','C','D',0,"A Harfi! ✅"],
+                'm12':['🐭','🐰','🐘','🦁',0,"En Küçük Fare! 🐭"],
+                'm13':['😊','😢','😡','😴',1,"Ağlama Asel! 😢"],
+                'm6':['⬛','🔺','🟡','🔷',0,"Kareyi Bildin! ⬛"]
+            };
+            const data = map[id];
+            data[0].forEach((item, index) => {
+                const b = document.createElement('div'); b.className='emoji-big'; b.innerText=item;
+                if(id==='m11') b.style.fontSize='50px';
+                b.onclick=()=>{ if(index===data[4]){showToast(data[5]); play(id);} };
                 stage.appendChild(b);
-            });
-        } else if(id === 'm10') { // BALON
-            const b = document.createElement('div'); b.className='emoji-big'; b.innerText='🎈';
-            b.style.position='absolute'; b.style.left='40%';
-            b.onclick=()=>{ b.innerText='💥'; setTimeout(()=>{ play('m10'); },300); };
-            stage.appendChild(b);
-        } else if(id === 'm11') { // HARF
-            ['A','B','C','D'].forEach((h, i) => {
-                const b = document.createElement('button'); b.className='btn-action'; b.innerText=h;
-                b.onclick=()=>{ if(i===0){alert("Doğru!"); play('m11');} };
-                stage.appendChild(b);
-            });
-        } else if(id === 'm12') { // BOYUT
-            ['🐭','🐰','🐘'].forEach((h, i) => {
-                const b = document.createElement('div'); b.className='emoji-big'; b.innerText=h;
-                b.onclick=()=>{ if(i===0){alert("En Küçüğü Fare!"); play('m12');} };
-                stage.appendChild(b);
-            });
-        } else if(id === 'm13') { // DUYGU
-            ['😊','😢','😡','😴'].forEach((d, i) => {
-                const b = document.createElement('div'); b.className='emoji-big'; b.innerText=d;
-                b.onclick=()=>{ if(i===1){alert("Aferin!"); play('m13');} };
-                stage.appendChild(b);
-            });
-        } else if(id === 'm14') { // SIRALAMA
-            let cur = 1; let ns = Array.from({length: 16}, (_, i) => i + 1).sort(()=>Math.random()-0.5);
-            const g = document.createElement('div'); g.className = 'grid-4x4';
-            ns.forEach(n => {
-                const b = document.createElement('div'); b.className = 'tile'; b.innerText = n;
-                b.onclick = () => { if(n === cur) { b.style.background = '#c8e6c9'; cur++; if(cur>16){alert("Sayı Kraliçesi!"); play('m14');}} };
-                g.appendChild(b);
-            });
-            stage.appendChild(g);
-        } else if(id === 'm15') { // BESİN
-            ['🥦','🍕','🍟','🍭'].forEach((b, i) => {
-                const bt = document.createElement('div'); bt.className='emoji-big'; bt.innerText=b;
-                bt.onclick=()=>{ if(i===0){alert("En Sağlıklısı!"); play('m15');} };
-                stage.appendChild(bt);
             });
         }
     }
