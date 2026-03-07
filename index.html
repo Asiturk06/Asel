@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Asel'in Zeka Sarayı - 15 Oyun Full</title>
+    <style>
+        :root { --p: #ff007f; --s: #ffe4f1; --d: #ad1457; --w: #ffffff; }
+        body { font-family: 'Comic Sans MS', cursive; background: var(--s); margin: 0; padding: 0; text-align: center; overflow-x: hidden; touch-action: manipulation; }
+        header { background: var(--p); color: white; padding: 20px 0; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        .asel-img { width: 100px; height: 100px; border-radius: 50%; border: 4px solid white; object-fit: cover; background: white; margin-bottom: 10px; }
+        .nav-wrapper { background: white; padding: 15px 0; border-bottom: 3px solid var(--p); display: flex; justify-content: center; }
+        .menu-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 950px; padding: 0 10px; }
+        .menu-item { display: flex; flex-direction: column; align-items: center; padding: 8px; border: 2px solid var(--p); border-radius: 12px; min-width: 65px; cursor: pointer; background: white; transition: 0.2s; }
+        .menu-item.active { background: var(--p); color: white; transform: scale(1.1); }
+        .menu-item span { font-size: 24px; }
+        .menu-item small { font-size: 9px; font-weight: bold; margin-top: 3px; }
+        #game-view { padding: 20px 10px; display: flex; flex-direction: column; align-items: center; min-height: 500px; }
+        #instruction { font-weight: bold; color: var(--d); margin-bottom: 15px; font-size: 20px; }
+        .game-card { background: white; padding: 20px; border-radius: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 95%; max-width: 450px; min-height: 400px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
+        .grid-4x4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: 100%; }
+        .tile { font-size: 28px; background: #fff0f6; border: 2px solid var(--p); border-radius: 12px; height: 70px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .btn-action { background: var(--d); color: white; border: none; padding: 12px 30px; border-radius: 50px; font-weight: bold; margin: 10px; font-size: 18px; cursor: pointer; }
+        canvas { border: 3px dashed var(--p); background: white; border-radius: 15px; max-width: 100%; touch-action: none; }
+        .emoji-big { font-size: 80px; margin: 10px; cursor: pointer; transition: 0.2s; }
+        .emoji-big:hover { transform: scale(1.2); }
+    </style>
+</head>
+<body>
+
+<header>
+    <img src="XFUT2204.JPG" onerror="this.src='https://via.placeholder.com/100/FF007F/FFFFFF?text=Asel'" class="asel-img">
+    <h1>Asel'in Zeka Sarayı</h1>
+</header>
+
+<div class="nav-wrapper"><div class="menu-container" id="navbar"></div></div>
+
+<div id="game-view">
+    <div id="instruction">Asel, bir oyun seç ve dehanı göster!</div>
+    <div class="game-card" id="stage">
+        <div style="font-size: 80px;">🚀</div>
+        <h2>Tüm Oyunlar Hazır!</h2>
+        <p>15 farklı zorlu görev seni bekliyor.</p>
+    </div>
+</div>
+
+<script>
+    const games = [
+        {id:'m1', icon:'🧠', label:'Hafıza', t:'16 Kartı Eşleştir'},
+        {id:'m2', icon:'👀', label:'Farklı', t:'Gizliyi Bul'},
+        {id:'m3', icon:'🔢', label:'Topla', t:'Zor Matematik'},
+        {id:'m4', icon:'🎨', label:'Renk', t:'Hangisi Pembe?'},
+        {id:'m5', icon:'🍎', label:'Say', t:'Meyveleri Say'},
+        {id:'m6', icon:'📐', label:'Şekil', t:'Kareyi Seç'},
+        {id:'m7', icon:'✍️', label:'Çiz', t:'Resim Yap'},
+        {id:'m8', icon:'➡️', label:'Yön', t:'Yukarı Bakan Ok?'},
+        {id:'m9', icon:'🦁', label:'Hayvan', t:'Hav Hav Kim?'},
+        {id:'m10', icon:'🎈', label:'Balon', t:'Hızlı Patlat!'},
+        {id:'m11', icon:'🅰️', label:'Harf', t:'"A" Harfi Nerede?'},
+        {id:'m12', icon:'🐘', label:'Boyut', t:'En Küçüğü Bul'},
+        {id:'m13', icon:'😊', label:'Duygu', t:'Kim Üzgün?'},
+        {id:'m14', icon:'🎹', label:'Sıra', t:'1-16 Sıralama'},
+        {id:'m15', icon:'🍉', label:'Besin', t:'Sağlıklı Seç'}
+    ];
+
+    const navbar = document.getElementById('navbar');
+    const stage = document.getElementById('stage');
+    const instruction = document.getElementById('instruction');
+
+    games.forEach(g => {
+        const div = document.createElement('div');
+        div.className = 'menu-item';
+        div.innerHTML = `<span>${g.icon}</span><small>${g.label}</small>`;
+        div.onclick = () => {
+            document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
+            div.classList.add('active');
+            instruction.innerText = g.t;
+            play(g.id);
+        };
+        navbar.appendChild(div);
+    });
+
+    function play(id) {
+        stage.innerHTML = '';
+        if(id === 'm1') { // HAFIZA
+            let emojis = ['🦁','🦁','🐯','🐯','🦊','🦊','🐼','🐼','🐨','🐨','🐷','🐷','🦓','🦓','🐻','🐻'].sort(()=>Math.random()-0.5);
+            let flipped = [];
+            const grid = document.createElement('div'); grid.className = 'grid-4x4';
+            emojis.forEach(e => {
+                const b = document.createElement('div'); b.className = 'tile'; b.innerText = '?';
+                b.onclick = () => {
+                    if(flipped.length < 2 && b.innerText === '?') {
+                        b.innerText = e; b.style.background = 'white'; flipped.push(b);
+                        if(flipped.length === 2) {
+                            if(flipped[0].innerText === flipped[1].innerText) flipped = [];
+                            else setTimeout(() => { flipped.forEach(x => {x.innerText = '?'; x.style.background='#fff0f6'}); flipped = []; }, 600);
+                        }
+                    }
+                };
+                grid.appendChild(b);
+            });
+            stage.appendChild(grid);
+        } else if(id === 'm2') { // FARKLI
+            const grid = document.createElement('div'); grid.className = 'grid-4x4';
+            let items = Array(15).fill('🍓'); items.push('🍒');
+            items.sort(()=>Math.random()-0.5).forEach(it => {
+                const b = document.createElement('div'); b.className = 'tile'; b.innerText = it;
+                b.onclick = () => { if(it==='🍒') { alert("Dahisin Asel!"); play('m2'); } };
+                grid.appendChild(b);
+            });
+            stage.appendChild(grid);
+        } else if(id === 'm3') { // MATEMATİK
+            let a = Math.floor(Math.random()*25)+15, b = Math.floor(Math.random()*15)+10;
+            stage.innerHTML = `<h1 style="font-size:70px; color:var(--p)">${a} + ${b}</h1>`;
+            [a+b, a+b+2, a+b-3].sort(()=>Math.random()-0.5).forEach(res => {
+                const btn = document.createElement('button'); btn.className = 'btn-action'; btn.innerText = res;
+                btn.onclick = () => { if(res === a+b) { alert("Süper!"); play('m3'); } };
+                stage.appendChild(btn);
+            });
+        } else if(id === 'm4') { // RENK
+            ['🌸','💎','🍀'].forEach((e, i) => {
+                const b = document.createElement('div'); b.className = 'emoji-big'; b.innerText = e;
+                b.onclick = () => { if(i===0) { alert("Doğru!"); play('m4'); } };
+                stage.appendChild(b);
+            });
+        } else if(id === 'm5') { // SAYMA
+            let n = Math.floor(Math.random()*5)+4;
+            stage.innerHTML = `<div style="font-size:40px">${'🍎'.repeat(n)}</div>`;
+            [n, n+1, n-1].sort(()=>Math.random()-0.5).forEach(ans => {
+                const btn = document.createElement('button'); btn.className = 'btn-action'; btn.innerText = ans;
+                btn.onclick = () => { if(ans === n) { alert("Harika!"); play('m5'); } };
+                stage.appendChild(btn);
+            });
+        } else if(id === 'm6') { // ŞEKİL
+            ['⬛','🔺','🟡'].forEach((s, i) => {
+                const b = document.createElement('div'); b.className = 'emoji-big'; b.innerText = s;
+                b.onclick = () => { if(i===0) { alert("Bildin!"); play('m6'); } };
+                stage.appendChild(b);
+            });
+        } else if(id === 'm7') { // ÇİZİM
+            const c = document.createElement('canvas'); c.width=350; c.height=350;
+            const ctx = c.getContext('2d'); let d=false;
+            const p = (e) => { const r=c.getBoundingClientRect(); return {x:(e.touches?e.touches[0].clientX:e.clientX)-r.left, y:(e.touches?e.touches[0].clientY:e.clientY)-r.top}; };
+            c.onmousedown=c.ontouchstart=(e)=>{ d=true; ctx.beginPath(); const pos=p(e); ctx.moveTo(pos.x,pos.y); };
+            c.onmousemove=c.ontouchmove=(e)=>{ if(!d)return; const pos=p(e); ctx.lineWidth=8; ctx.lineCap='round'; ctx.strokeStyle='#ff007f'; ctx.lineTo(pos.x,pos.y); ctx.stroke(); };
+            window.onmouseup=window.ontouchend=()=>d=false;
+            stage.appendChild(c);
+            const b = document.createElement('button'); b.className='btn-action'; b.innerText='Sil'; b.onclick=()=>ctx.clearRect(0,0,350,350);
+            stage.appendChild(b);
+        } else if(id === 'm8') { // YÖN
+            ['⬆️','⬇️','⬅️','➡️'].forEach((y, i) => {
+                const b = document.createElement('div'); b.className='emoji-big'; b.innerText=y;
+                b.onclick=()=>{ if(i===0){alert("Bravo!"); play('m8');} };
+                stage.appendChild(b);
+            });
+        } else if(id === 'm9') { // HAYVAN
+            ['🐶','🐱','🐮','🦁'].forEach((h, i) => {
+                const b = document.createElement('div'); b.className='emoji-big'; b.innerText=h;
+                b.onclick=()=>{ if(i===0){alert("Aferin!"); play('m9');} };
+                stage.appendChild(b);
+            });
+        } else if(id === 'm10') { // BALON
+            const b = document.createElement('div'); b.className='emoji-big'; b.innerText='🎈';
+            b.style.position='absolute'; b.style.left='40%';
+            b.onclick=()=>{ b.innerText='💥'; setTimeout(()=>{ play('m10'); },300); };
+            stage.appendChild(b);
+        } else if(id === 'm11') { // HARF
+            ['A','B','C','D'].forEach((h, i) => {
+                const b = document.createElement('button'); b.className='btn-action'; b.innerText=h;
+                b.onclick=()=>{ if(i===0){alert("Doğru!"); play('m11');} };
+                stage.appendChild(b);
+            });
+        } else if(id === 'm12') { // BOYUT
+            ['🐭','🐰','🐘'].forEach((h, i) => {
+                const b = document.createElement('div'); b.className='emoji-big'; b.innerText=h;
+                b.onclick=()=>{ if(i===0){alert("En Küçüğü Fare!"); play('m12');} };
+                stage.appendChild(b);
+            });
+        } else if(id === 'm13') { // DUYGU
+            ['😊','😢','😡','😴'].forEach((d, i) => {
+                const b = document.createElement('div'); b.className='emoji-big'; b.innerText=d;
+                b.onclick=()=>{ if(i===1){alert("Aferin!"); play('m13');} };
+                stage.appendChild(b);
+            });
+        } else if(id === 'm14') { // SIRALAMA
+            let cur = 1; let ns = Array.from({length: 16}, (_, i) => i + 1).sort(()=>Math.random()-0.5);
+            const g = document.createElement('div'); g.className = 'grid-4x4';
+            ns.forEach(n => {
+                const b = document.createElement('div'); b.className = 'tile'; b.innerText = n;
+                b.onclick = () => { if(n === cur) { b.style.background = '#c8e6c9'; cur++; if(cur>16){alert("Sayı Kraliçesi!"); play('m14');}} };
+                g.appendChild(b);
+            });
+            stage.appendChild(g);
+        } else if(id === 'm15') { // BESİN
+            ['🥦','🍕','🍟','🍭'].forEach((b, i) => {
+                const bt = document.createElement('div'); bt.className='emoji-big'; bt.innerText=b;
+                bt.onclick=()=>{ if(i===0){alert("En Sağlıklısı!"); play('m15');} };
+                stage.appendChild(bt);
+            });
+        }
+    }
+</script>
+</body>
+</html>
