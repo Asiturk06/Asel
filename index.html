@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Asel'in Macera Dünyası</title>
+    <link href="https://fonts.googleapis.com/css2?family=Varela+Round&display=swap" rel="stylesheet">
+    <style>
+        :root { --p: #ff007f; --s: #fff0f6; --d: #ad1457; --y: #4caf50; --o: #ff9800; --b: #2196f3; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: 'Varela Round', sans-serif; touch-action: none; }
+        body { background: var(--s); margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        
+        header { background: var(--p); color: white; padding: 5px; text-align: center; flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; padding: 5px 15px; }
+        .asel-img { width: 35px; height: 35px; border-radius: 50%; border: 2px solid white; }
+        #score-board { font-size: 14px; background: rgba(0,0,0,0.2); padding: 4px 10px; border-radius: 10px; }
+
+        .nav-wrapper { 
+            background: white; padding: 5px; border-bottom: 2px solid var(--p); 
+            display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; flex-shrink: 0;
+        }
+        .menu-item { display: flex; flex-direction: column; align-items: center; padding: 8px 0; border-radius: 10px; border: 1px solid #eee; background: #fff; font-size: 22px; cursor: pointer; }
+        .menu-item.active { background: var(--p); color: white; border-color: var(--p); }
+
+        #game-view { flex-grow: 1; display: flex; flex-direction: column; padding: 10px; position: relative; }
+        #instruction { font-weight: bold; color: var(--d); margin: 5px auto; font-size: 15px; text-align: center; }
+        
+        #stage { 
+            background: #fff; border-radius: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            width: 100%; max-width: 350px; height: 100%; max-height: 420px;
+            margin: 0 auto; position: relative; overflow: hidden;
+        }
+
+        .brick { position: absolute; background: var(--p); border: 1px solid white; border-radius: 3px; }
+        .game-obj { position: absolute; user-select: none; }
+        
+        #toast {
+            position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%);
+            padding: 15px 25px; border-radius: 25px; z-index: 10000; display: none;
+            text-align: center; width: 80%; font-weight: bold; color: white;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+
+<div id="toast"></div>
+<header>
+    <img src="XFUT2204.JPG" onerror="this.src='https://via.placeholder.com/40/FF007F/FFFFFF?text=A'" class="asel-img">
+    <div id="score-board">Puan: <span id="pts">0</span> | Seviye: <span id="lvl">1</span></div>
+</header>
+<div class="nav-wrapper" id="navbar"></div>
+<div id="game-view">
+    <div id="instruction">Hoş Geldin Asel! 🚀</div>
+    <div id="stage"></div>
+</div>
+
+<script>
+    const stage = document.getElementById('stage');
+    const ptsDisp = document.getElementById('pts');
+    const lvlDisp = document.getElementById('lvl');
+    const toast = document.getElementById('toast');
+    let score = 0, level = 1, loop = null;
+
+    function msg(t, ok) { 
+        toast.innerText = t; toast.style.background = ok ? 'var(--y)' : 'var(--o)'; 
+        toast.style.display = 'block'; setTimeout(() => toast.style.display = 'none', 1500); 
+    }
+
+    function updateStats() { ptsDisp.innerText = score; lvlDisp.innerText = level; }
+
+    function clear() { clearInterval(loop); stage.innerHTML = ''; stage.onpointermove = null; stage.onpointerdown = null; }
+
+    const menu = [
+        {id:'pb', icon:'⚾', t:'Blok Kırma (30 Seviye)'},
+        {id:'car', icon:'🏎️', t:'Araba Yarışı'},
+        {id:'war', icon:'🚀', t:'Uzay Savaşı'},
+        {id:'pet', icon:'🐱', t:'Kediciği Besle'},
+        {id:'run', icon:'🏃', t:'Zıpla Kaç'}
+    ];
+
+    menu.forEach(m => {
+        const d = document.createElement('div'); d.className = 'menu-item'; d.innerHTML = m.icon;
+        d.onclick = () => {
+            document.querySelectorAll('.menu-item').forEach(x => x.classList.remove('active'));
+            d.classList.add('active'); document.getElementById('instruction').innerText = m.t;
+            play(m.id);
+        };
+        document.getElementById('navbar').appendChild(d);
+    });
+
+    function play(id) {
+        clear();
+        if(id === 'pb') { // 30 SEVİYELİ PİNBALL (BREAKOUT)
+            let bx=150, by=250, dx=3+(level*0.2), dy=-3-(level*0.2);
+            stage.innerHTML = `<div id="pad" style="position:absolute;bottom:10px;left:135px;width:80px;height:12px;background:var(--b);border-radius:10px"></div>
+                               <div id="ball" style="position:absolute;width:15px;height:15px;background:var(--d);border-radius:50%"></div>`;
+            const pad = stage.querySelector('#pad'), ball = stage.querySelector('#ball');
+            
+            // Blokları Oluştur
+            let bricks = [];
+            let rows = Math.min(3 + Math.floor(level/5), 6);
+            for(let r=0; r<rows; r++) {
+                for(let c=0; c<6; c++) {
+                    const b = document.createElement('div'); b.className = 'brick';
+                    b.style.width = '50px'; b.style.height = '15px';
+                    b.style.left = (c*58 + 5) + 'px'; b.style.top = (r*20 + 40) + 'px';
+                    stage.appendChild(b);
+                    bricks.push(b);
+                }
+            }
+
+            stage.onpointermove = (e) => {
+                let x = e.clientX - stage.getBoundingClientRect().left - 40;
+                pad.style.left = Math.max(0, Math.min(x, stage.clientWidth - 80)) + 'px';
+            };
+
+            loop = setInterval(() => {
+                bx += dx; by += dy;
+                if(bx <= 0 || bx >= stage.clientWidth-15) dx *= -1;
+                if(by <= 0) dy *= -1;
+                
+                // Raket çarpma
+                if(by >= stage.clientHeight-35) {
+                    let pr = pad.getBoundingClientRect(), br = ball.getBoundingClientRect();
+                    if(br.right > pr.left && br.left < pr.right) { dy *= -1; by = stage.clientHeight-36; }
+                    else if(by > stage.clientHeight) { msg("Eyvah! Yeniden!", false); play('pb'); }
+                }
+
+                // Blok çarpma
+                bricks.forEach((b, i) => {
+                    let br = b.getBoundingClientRect(), blr = ball.getBoundingClientRect();
+                    if(blr.bottom > br.top && blr.top < br.bottom && blr.right > br.left && blr.left < br.right) {
+                        b.remove(); bricks.splice(i, 1); dy *= -1; score += 10; updateStats();
+                        if(bricks.length === 0) { 
+                            level++; score += 100; updateStats(); 
+                            if(level > 30) { msg("Kraliçe Asel Kazandı! 👑", true); level=1; }
+                            else { msg("Tebrikler! Seviye " + level, true); play('pb'); }
+                        }
+                    }
+                });
+
+                ball.style.left = bx + 'px'; ball.style.top = by + 'px';
+            }, 20);
+        }
+
+        else if(id === 'car') { // SEVİYELİ ARABA YARIŞI
+            stage.innerHTML = `<div style="width:100%;height:100%;background:#333;position:relative" id="road">
+                <div id="mycar" style="position:absolute;bottom:20px;left:140px;font-size:40px">🏎️</div>
+            </div>`;
+            const mycar = stage.querySelector('#mycar');
+            stage.onpointermove = (e) => {
+                let x = e.clientX - stage.getBoundingClientRect().left - 20;
+                mycar.style.left = Math.max(0, Math.min(x, stage.clientWidth - 40)) + 'px';
+            };
+            loop = setInterval(() => {
+                const obs = document.createElement('div'); obs.innerText = '🚧'; obs.className='game-obj';
+                obs.style.top = '-50px'; obs.style.left = Math.random()*85+'%'; obs.style.fontSize='30px';
+                stage.appendChild(obs);
+                let y = -50, speed = 4 + (level*0.5);
+                let mov = setInterval(() => {
+                    y += speed; obs.style.top = y + 'px';
+                    let cr = mycar.getBoundingClientRect(), or = obs.getBoundingClientRect();
+                    if(or.bottom > cr.top && or.left < cr.right && or.right > cr.left) { 
+                        msg("Çarptın! 💥", false); score = Math.max(0, score-10); updateStats(); obs.remove(); clearInterval(mov); 
+                    }
+                    if(y > 450) { obs.remove(); clearInterval(mov); score += 5; updateStats(); if(score % 100 === 0) level++; }
+                }, 20);
+            }, 1200 / (1 + level*0.1));
+        }
+
+        else if(id === 'war') { // UZAY SAVAŞI
+            stage.innerHTML = `<div style="background:#000;width:100%;height:100%"><div id="ship" style="position:absolute;bottom:10px;left:145px;font-size:40px">🚀</div></div>`;
+            const ship = stage.querySelector('#ship');
+            stage.onpointerdown = () => {
+                const l = document.createElement('div'); l.innerText='🔥'; l.style.position='absolute';
+                l.style.left = (ship.offsetLeft + 10) + 'px'; l.style.bottom = '50px'; stage.appendChild(l);
+                let ly = 50;
+                let lm = setInterval(() => {
+                    ly += 8; l.style.bottom = ly + 'px';
+                    stage.querySelectorAll('.enemy').forEach(e => {
+                        let er = e.getBoundingClientRect(), lr = l.getBoundingClientRect();
+                        if(lr.top < er.bottom && lr.left < er.right && lr.right > er.left) {
+                            e.remove(); l.remove(); clearInterval(lm); score += 20; updateStats();
+                            if(score % 200 === 0) level++;
+                        }
+                    });
+                    if(ly > 400) { l.remove(); clearInterval(lm); }
+                }, 20);
+            };
+            loop = setInterval(() => {
+                const e = document.createElement('div'); e.className='enemy game-obj'; e.innerText='👾';
+                e.style.top='0'; e.style.left=Math.random()*85+'%'; e.style.fontSize='30px';
+                stage.appendChild(e);
+                let ey = 0;
+                let em = setInterval(() => {
+                    ey += 2 + (level*0.2); e.style.top = ey + 'px';
+                    if(ey > 400) { e.remove(); clearInterval(em); }
+                }, 20);
+            }, 1500 / (1 + level*0.1));
+        }
+
+        else if(id === 'pet') { // SANAL BEBEK (Gelişmiş)
+            stage.innerHTML = `<div style="text-align:center;padding-top:40px">
+                <div id="p-img" style="font-size:100px">🐱</div>
+                <div style="font-size:20px;margin:10px" id="p-mood">Benimle Oyna!</div>
+                <button style="background:var(--y);color:white;padding:15px;border:none;border-radius:10px;margin:5px" onclick="pAction('f')">🍗 Besle</button>
+                <button style="background:var(--b);color:white;padding:15px;border:none;border-radius:10px;margin:5px" onclick="pAction('p')">🎾 Oyna</button>
+            </div>`;
+            window.pAction = (a) => {
+                const img = stage.querySelector('#p-img');
+                if(a==='f') { img.innerText='😋'; score += 5; }
+                else { img.innerText='😸'; score += 10; }
+                updateStats(); setTimeout(()=>img.innerText='🐱', 1000);
+                if(score > level*100) { level++; msg("Seviye Atladın! 🥳", true); }
+            }
+        }
+
+        else if(id === 'run') { // KOŞUCU
+            stage.innerHTML = `<div id="rn" style="position:absolute;bottom:0;left:30px;font-size:45px">🏃</div>
+                               <div style="position:absolute;bottom:0;width:100%;height:3px;background:#333"></div>`;
+            const rn = stage.querySelector('#rn');
+            let j = false;
+            stage.onpointerdown = () => {
+                if(!j) { j=true; rn.style.transition='bottom 0.4s'; rn.style.bottom='120px';
+                setTimeout(()=>{rn.style.bottom='0'; setTimeout(()=>j=false, 400);}, 400); }
+            };
+            loop = setInterval(() => {
+                const obs = document.createElement('div'); obs.innerText='🌵'; obs.style.position='absolute';
+                obs.style.bottom='0'; obs.style.left='350px'; obs.style.fontSize='35px';
+                stage.appendChild(obs);
+                let ox = 350, spd = 5 + level;
+                let om = setInterval(() => {
+                    ox -= spd; obs.style.left = ox + 'px';
+                    let rr = rn.getBoundingClientRect(), or = obs.getBoundingClientRect();
+                    if(or.left < rr.right && or.right > rr.left && rr.bottom > or.top) { msg("Zıpla! 🌵", false); score = Math.max(0, score-5); updateStats(); }
+                    if(ox < -40) { obs.remove(); clearInterval(om); score += 10; updateStats(); if(score % 150 === 0) level++; }
+                }, 20);
+            }, 2000 - (level*50));
+        }
+    }
+</script>
+</body>
+</html>
