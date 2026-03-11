@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Asel'in Aksiyon Dünyası</title>
+    <link href="https://fonts.googleapis.com/css2?family=Varela+Round&display=swap" rel="stylesheet">
+    <style>
+        :root { --p: #ff007f; --s: #fff0f6; --d: #ad1457; --y: #4caf50; --o: #ff9800; --b: #2196f3; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: 'Varela Round', sans-serif; touch-action: none; }
+        body { background: var(--s); margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        
+        header { background: var(--p); color: white; padding: 5px; text-align: center; flex-shrink: 0; }
+        .asel-img { width: 35px; height: 35px; border-radius: 50%; border: 2px solid white; }
+        
+        .nav-wrapper { 
+            background: white; padding: 5px; border-bottom: 2px solid var(--p); 
+            display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; flex-shrink: 0;
+        }
+        .menu-item { 
+            display: flex; flex-direction: column; align-items: center; 
+            padding: 5px 0; border-radius: 10px; border: 1px solid #eee; background: #fff; font-size: 20px;
+        }
+        .menu-item.active { background: var(--p); color: white; border-color: var(--p); }
+
+        #game-view { flex-grow: 1; display: flex; flex-direction: column; padding: 10px; position: relative; }
+        #instruction { font-weight: bold; color: var(--d); margin: 5px auto; font-size: 15px; text-align: center; }
+        
+        #stage { 
+            background: white; border-radius: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            width: 100%; max-width: 350px; height: 100%; max-height: 420px;
+            margin: 0 auto; position: relative; overflow: hidden;
+        }
+
+        /* Oyun Objesi Stilleri */
+        .game-obj { position: absolute; user-select: none; }
+        .btn-pet { background: var(--b); color: white; border: none; padding: 8px; border-radius: 10px; margin: 3px; font-size: 12px; }
+        
+        #toast {
+            position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%);
+            padding: 15px 25px; border-radius: 25px; z-index: 10000; display: none;
+            text-align: center; width: 80%; font-weight: bold; color: white;
+        }
+    </style>
+</head>
+<body>
+
+<div id="toast"></div>
+<header>
+    <img src="XFUT2204.JPG" onerror="this.src='https://via.placeholder.com/40/FF007F/FFFFFF?text=A'" class="asel-img">
+    <span style="font-weight:bold; font-size:14px">Asel'in Aksiyon Dünyası</span>
+</header>
+<div class="nav-wrapper" id="navbar"></div>
+<div id="game-view">
+    <div id="instruction">Bir macera seç Asel! 🚀</div>
+    <div id="stage"></div>
+</div>
+
+<script>
+    const stage = document.getElementById('stage');
+    const instr = document.getElementById('instruction');
+    const toast = document.getElementById('toast');
+    let loop;
+
+    function clear() { clearInterval(loop); stage.innerHTML = ''; stage.onpointerdown = stage.onpointermove = stage.onpointerup = null; }
+    function msg(t, ok) { toast.innerText = t; toast.style.background = ok ? 'var(--y)' : 'var(--o)'; toast.style.display = 'block'; setTimeout(() => toast.style.display = 'none', 1200); }
+
+    const games = [
+        {id:'car', icon:'🏎️', t:'Hızlı Araba!'},
+        {id:'pin', icon:'🎳', t:'Lobutları Devir!'},
+        {id:'pet', icon:'🐱', t:'Kediciğe Bak!'},
+        {id:'war', icon:'🚀', t:'Uzay Savaşı!'},
+        {id:'pb', icon:'⚾', t:'Pinball Zamanı!'},
+        {id:'draw', icon:'✍️', t:'Boyama Yap!'},
+        {id:'memo', icon:'🧠', t:'Hafıza Kartları!'},
+        {id:'sort', icon:'🎹', t:'Sayı Sırala!'},
+        {id:'bal', icon:'🎈', t:'Balon Patlat!'},
+        {id:'run', icon:'🏃', t:'Zıpla Kaç!'}
+    ];
+
+    games.forEach(g => {
+        const d = document.createElement('div'); d.className = 'menu-item'; d.innerHTML = `<span>${g.icon}</span>`;
+        d.onclick = () => {
+            document.querySelectorAll('.menu-item').forEach(x => x.classList.remove('active'));
+            d.classList.add('active'); instr.innerText = g.t; play(g.id);
+        };
+        document.getElementById('navbar').appendChild(d);
+    });
+
+    function play(id) {
+        clear();
+        if(id === 'car') { // ARABA YARIŞI
+            stage.innerHTML = `<div id="road" style="width:100%;height:100%;background:#444;position:relative">
+                <div id="car" style="position:absolute;bottom:20px;left:40%;font-size:40px">🏎️</div>
+            </div>`;
+            const car = stage.querySelector('#car');
+            stage.onpointermove = (e) => {
+                let x = e.clientX - stage.getBoundingClientRect().left - 20;
+                car.style.left = Math.max(0, Math.min(x, stage.clientWidth - 40)) + 'px';
+            };
+            loop = setInterval(() => {
+                const obs = document.createElement('div'); obs.innerText = '🚧'; obs.className='game-obj';
+                obs.style.top = '-50px'; obs.style.left = Math.random()*80+'%'; obs.style.fontSize='30px';
+                stage.appendChild(obs);
+                let y = -50;
+                let mov = setInterval(() => {
+                    y += 5; obs.style.top = y + 'px';
+                    let cr = car.getBoundingClientRect(), or = obs.getBoundingClientRect();
+                    if(or.bottom > cr.top && or.left < cr.right && or.right > cr.left) { msg("Dikkat Et! 💥", false); obs.remove(); clearInterval(mov); }
+                    if(y > 450) { obs.remove(); clearInterval(mov); }
+                }, 20);
+            }, 1500);
+        }
+        else if(id === 'pin') { // LOBUT DEVİRME
+            stage.innerHTML = `<div id="pins" style="display:flex;justify-content:center;gap:10px;margin-top:20px">
+                <span>🎳</span><span>🎳</span><span>🎳</span><span>🎳</span>
+            </div><div id="ball" style="position:absolute;bottom:30px;left:45%;font-size:40px;cursor:pointer">⚾</div>`;
+            const ball = stage.querySelector('#ball');
+            ball.onpointerdown = () => {
+                ball.style.transition = 'bottom 0.5s'; ball.style.bottom = '300px';
+                setTimeout(() => {
+                    stage.querySelectorAll('span').forEach(p => p.style.transform = 'rotate(90deg)');
+                    msg("HEPSİ DEVRİLDİ! 🏆", true);
+                    setTimeout(() => play('pin'), 1000);
+                }, 500);
+            };
+        }
+        else if(id === 'pet') { // SANAL BEBEK
+            let happy = 50;
+            stage.innerHTML = `<div style="text-align:center;padding-top:50px">
+                <div id="pet-img" style="font-size:80px">🐱</div>
+                <div id="stat">Mutluluk: ${happy}%</div>
+                <div style="margin-top:20px">
+                    <button class="btn-pet" onclick="petAction('feed')">🍕 Yemek Ver</button>
+                    <button class="btn-pet" onclick="petAction('play')">🧶 Oyun Oyna</button>
+                    <button class="btn-pet" onclick="petAction('wash')">🧼 Yıka</button>
+                </div>
+            </div>`;
+            window.petAction = (a) => {
+                const img = stage.querySelector('#pet-img');
+                if(a==='feed') { img.innerText='😋'; happy += 10; }
+                if(a==='play') { img.innerText='😸'; happy += 15; }
+                if(a==='wash') { img.innerText='😺'; happy += 5; }
+                stage.querySelector('#stat').innerText = `Mutluluk: ${happy}%`;
+                setTimeout(() => img.innerText='🐱', 1000);
+                if(happy >= 100) msg("Kedicik Çok Mutlu! 💖", true);
+            };
+        }
+        else if(id === 'war') { // UZAY SAVAŞI
+            stage.innerHTML = `<div style="background:#000;width:100%;height:100%"><div id="ship" style="position:absolute;bottom:10px;left:45%;font-size:40px">🚀</div></div>`;
+            const ship = stage.querySelector('#ship');
+            stage.onpointerdown = (e) => {
+                const laser = document.createElement('div'); laser.innerText='🔥'; laser.className='game-obj';
+                laser.style.left = ship.offsetLeft + 10 + 'px'; laser.style.bottom = '50px';
+                stage.appendChild(laser);
+                let ly = 50;
+                let lmov = setInterval(() => {
+                    ly += 7; laser.style.bottom = ly + 'px';
+                    if(ly > 400) { laser.remove(); clearInterval(lmov); }
+                }, 20);
+            };
+            loop = setInterval(() => {
+                const met = document.createElement('div'); met.innerText='👾'; met.className='game-obj';
+                met.style.top='0'; met.style.left=Math.random()*80+'%'; met.style.fontSize='30px';
+                stage.appendChild(met);
+                let my = 0;
+                let mmov = setInterval(() => {
+                    my += 2; met.style.top = my + 'px';
+                    if(my > 400) { met.remove(); clearInterval(mmov); }
+                }, 20);
+            }, 2000);
+        }
+        else if(id === 'pb') { // PINBALL BASİT
+            stage.innerHTML = `<div id="pad" style="position:absolute;bottom:20px;left:40%;width:80px;height:10px;background:var(--p);border-radius:5px"></div>
+                               <div id="pball" style="position:absolute;top:50px;left:50%;font-size:25px">⚾</div>`;
+            const pad = stage.querySelector('#pad'), pball = stage.querySelector('#pball');
+            let bx=150, by=50, dx=3, dy=3;
+            stage.onpointermove = (e) => {
+                let x = e.clientX - stage.getBoundingClientRect().left - 40;
+                pad.style.left = Math.max(0, Math.min(x, stage.clientWidth - 80)) + 'px';
+            };
+            loop = setInterval(() => {
+                bx += dx; by += dy;
+                if(bx <= 0 || bx >= stage.clientWidth-25) dx *= -1;
+                if(by <= 0) dy *= -1;
+                if(by >= stage.clientHeight-50) {
+                    let pr = pad.getBoundingClientRect(), br = pball.getBoundingClientRect();
+                    if(br.right > pr.left && br.left < pr.right) { dy *= -1.1; msg("GÜZEL! 🎾", true); }
+                    else { msg("EYVAH! 😮", false); bx=150; by=50; dy=3; }
+                }
+                pball.style.left = bx+'px'; pball.style.top = by+'px';
+            }, 20);
+        }
+        else if(id === 'run') { // KOŞUCU (Zıplama)
+            stage.innerHTML = `<div id="runner" style="position:absolute;bottom:0;left:20px;font-size:40px">🏃</div>
+                               <div id="ground" style="position:absolute;bottom:0;width:100%;height:2px;background:#000"></div>`;
+            const runner = stage.querySelector('#runner');
+            let jumping = false;
+            stage.onpointerdown = () => {
+                if(!jumping) {
+                    jumping = true; runner.style.transition = 'bottom 0.4s'; runner.style.bottom = '100px';
+                    setTimeout(() => { runner.style.bottom = '0'; setTimeout(()=>jumping=false, 400); }, 400);
+                }
+            };
+            loop = setInterval(() => {
+                const cactus = document.createElement('div'); cactus.innerText='🌵'; cactus.className='game-obj';
+                cactus.style.bottom='0'; cactus.style.left='350px'; cactus.style.fontSize='30px';
+                stage.appendChild(cactus);
+                let cx = 350;
+                let cmov = setInterval(() => {
+                    cx -= 4; cactus.style.left = cx + 'px';
+                    let rr = runner.getBoundingClientRect(), cr = cactus.getBoundingClientRect();
+                    if(cr.left < rr.right && cr.right > rr.left && rr.bottom > cr.top) { msg("Zıpla! 🌵", false); }
+                    if(cx < -30) { cactus.remove(); clearInterval(cmov); }
+                }, 20);
+            }, 2500);
+        }
+    }
+</script>
+</body>
+</html>
