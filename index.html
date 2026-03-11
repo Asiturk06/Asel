@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Asel'in Süper Macera Dünyası</title>
+    <link href="https://fonts.googleapis.com/css2?family=Varela+Round&display=swap" rel="stylesheet">
+    <style>
+        :root { --p: #ff007f; --s: #fff0f6; --d: #ad1457; --y: #4caf50; --o: #ff9800; --b: #2196f3; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: 'Varela Round', sans-serif; touch-action: none; }
+        body { background: var(--s); margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        
+        header { background: var(--p); color: white; padding: 5px 15px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+        #stats { font-size: 14px; background: rgba(0,0,0,0.2); padding: 5px 10px; border-radius: 12px; }
+        .nav-wrapper { background: white; padding: 5px; border-bottom: 2px solid var(--p); display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; flex-shrink: 0; }
+        .menu-item { display: flex; align-items: center; justify-content: center; padding: 10px 0; border-radius: 10px; border: 1px solid #eee; background: #fff; font-size: 20px; cursor: pointer; }
+        .menu-item.active { background: var(--p); color: white; border-color: var(--p); }
+
+        #game-view { flex-grow: 1; display: flex; flex-direction: column; padding: 10px; position: relative; align-items: center; }
+        #stage { background: #fff; border-radius: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); width: 100%; max-width: 350px; height: 100%; max-height: 420px; position: relative; overflow: hidden; }
+
+        .game-obj { position: absolute; pointer-events: none; user-select: none; }
+        .brick { position: absolute; border: 1px solid white; border-radius: 4px; transition: background 0.2s; }
+        .drop { position: absolute; font-size: 25px; animation: fall 3s linear forwards; }
+        @keyframes fall { to { transform: translateY(450px); } }
+
+        #toast { position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%); padding: 15px 25px; border-radius: 25px; z-index: 10000; display: none; text-align: center; width: 80%; font-weight: bold; color: white; }
+    </style>
+</head>
+<body>
+
+<div id="toast"></div>
+<header>
+    <div style="font-weight:bold;">Asel ❤️</div>
+    <div id="stats">P: <span id="pts">0</span> | L: <span id="lvl">1</span></div>
+</header>
+<div class="nav-wrapper" id="navbar"></div>
+<div id="game-view">
+    <div id="stage"></div>
+</div>
+
+<script>
+    const stage = document.getElementById('stage');
+    const ptsDisp = document.getElementById('pts');
+    const lvlDisp = document.getElementById('lvl');
+    const toast = document.getElementById('toast');
+    let score = 0, level = 1, gameLoop = null, intervals = [];
+    let powerActive = false;
+
+    function msg(t, ok) { 
+        toast.innerText = t; toast.style.background = ok ? 'var(--y)' : 'var(--o)'; 
+        toast.style.display = 'block'; setTimeout(() => toast.style.display = 'none', 1200); 
+    }
+
+    function clearSystem() {
+        intervals.forEach(clearInterval); intervals = [];
+        if(gameLoop) cancelAnimationFrame(gameLoop);
+        stage.innerHTML = ''; stage.onpointermove = null; stage.onpointerdown = null;
+        powerActive = false;
+        stage.style.background = "#fff";
+    }
+
+    const menu = [
+        {id:'pb', icon:'⚾'}, {id:'war', icon:'🚀'}, {id:'car', icon:'🏎️'}, 
+        {id:'run', icon:'🏃'}, {id:'memo', icon:'🧠'}, {id:'count', icon:'🍎'}, 
+        {id:'draw', icon:'✍️'}, {id:'sort', icon:'🎹'}
+    ];
+
+    menu.forEach(m => {
+        const d = document.createElement('div'); d.className = 'menu-item'; d.innerHTML = m.icon;
+        d.onclick = () => {
+            document.querySelectorAll('.menu-item').forEach(x => x.classList.remove('active'));
+            d.classList.add('active'); clearSystem(); play(m.id);
+        };
+        document.getElementById('navbar').appendChild(d);
+    });
+
+    function play(id) {
+        ptsDisp.innerText = score; lvlDisp.innerText = level;
+
+        if(id === 'pb') { // PINBALL WITH DROPS
+            let bx=150, by=250, dx=3, dy=-3, ballAlev = false;
+            stage.innerHTML = `<div id="pad" style="position:absolute;bottom:10px;left:135px;width:80px;height:12px;background:var(--b);border-radius:10px"></div>
+                               <div id="ball" style="position:absolute;width:15px;height:15px;background:red;border-radius:50%"></div>`;
+            const pad = stage.querySelector('#pad'), ball = stage.querySelector('#ball');
+            let bricks = [];
+            for(let r=0; r<4+Math.floor(level/5); r++) {
+                for(let c=0; c<6; c++) {
+                    const b = document.createElement('div'); b.className = 'brick';
+                    b.style.width='50px'; b.style.height='15px'; b.style.left=(c*57+5)+'px'; b.style.top=(r*20+40)+'px';
+                    b.style.background = (r % 2 === 0) ? 'var(--p)' : 'purple';
+                    stage.appendChild(b); bricks.push(b);
+                }
+            }
+            stage.onpointermove = (e) => {
+                let x = e.clientX - stage.getBoundingClientRect().left - 40;
+                pad.style.left = Math.max(0, Math.min(x, stage.clientWidth - 80)) + 'px';
+            };
+            function loop() {
+                bx += dx; by += dy;
+                if(bx <= 0 || bx >= stage.clientWidth-15) dx *= -1;
+                if(by <= 0) dy *= -1;
+                if(by >= stage.clientHeight-35) {
+                    let pr = pad.getBoundingClientRect(), br = ball.getBoundingClientRect();
+                    if(br.right > pr.left && br.left < pr.right) { dy = -Math.abs(dy); }
+                    else if(by > stage.clientHeight) { msg("Yeniden!", false); play('pb'); return; }
+                }
+                bricks.forEach((b, i) => {
+                    let br = b.getBoundingClientRect(), blr = ball.getBoundingClientRect();
+                    if(blr.bottom > br.top && blr.top < br.bottom && blr.right > br.left && blr.left < br.right) {
+                        if(!ballAlev) dy *= -1;
+                        b.remove(); bricks.splice(i, 1); score += 10; ptsDisp.innerText = score;
+                        if(Math.random() > 0.8) spawnDrop(br.left, br.top, 'pb');
+                        if(bricks.length === 0) { level++; msg("Süper! Lvl "+level, true); play('pb'); }
+                    }
+                });
+                ball.style.left = bx+'px'; ball.style.top = by+'px';
+                ball.style.background = ballAlev ? 'orange' : 'red';
+                ball.style.boxShadow = ballAlev ? '0 0 10px orange' : 'none';
+                gameLoop = requestAnimationFrame(loop);
+            }
+            loop();
+            window.applyPbPower = (type) => {
+                if(type === '🔥') { ballAlev = true; setTimeout(()=>ballAlev=false, 8000); }
+                if(type === '🔫') { 
+                    let s = setInterval(() => {
+                        const l = document.createElement('div'); l.innerText='^'; l.className='game-obj';
+                        l.style.left=(pad.offsetLeft+35)+'px'; l.style.bottom='25px'; stage.appendChild(l);
+                        let ly=25; let lm=setInterval(()=>{
+                            ly+=5; l.style.bottom=ly+'px';
+                            bricks.forEach((b,i)=>{ 
+                                if(l.offsetTop < b.offsetTop+15 && l.offsetLeft > b.offsetLeft && l.offsetLeft < b.offsetLeft+50){
+                                    b.remove(); bricks.splice(i,1); l.remove(); clearInterval(lm);
+                                }
+                            });
+                            if(ly>400){l.remove(); clearInterval(lm);}
+                        },20);
+                    }, 500);
+                    setTimeout(()=>clearInterval(s), 7000);
+                }
+            };
+        }
+
+        else if(id === 'war') { // WAR WITH DROPS
+            stage.style.background = "#000";
+            stage.innerHTML = `<div id="ship" style="position:absolute;bottom:10px;left:145px;font-size:40px">🚀</div>`;
+            const ship = stage.querySelector('#ship');
+            let fireType = 'normal';
+            stage.onpointermove = (e) => {
+                let x = e.clientX - stage.getBoundingClientRect().left - 20;
+                ship.style.left = Math.max(0, Math.min(x, stage.clientWidth - 40)) + 'px';
+            };
+            function shoot() {
+                const shots = fireType === '💎' ? [-15, 0, 15] : [0];
+                shots.forEach(offset => {
+                    const l = document.createElement('div'); l.innerText='⚡'; l.className='game-obj';
+                    l.style.left = (ship.offsetLeft + 15 + offset) + 'px'; l.style.bottom = '45px'; stage.appendChild(l);
+                    let ly = 45; let lm = setInterval(() => {
+                        ly += 8; l.style.bottom = ly + 'px';
+                        stage.querySelectorAll('.enemy').forEach(e => {
+                            let er = e.getBoundingClientRect(), lr = l.getBoundingClientRect();
+                            if(lr.top < er.bottom && lr.left < er.right && lr.right > er.left) {
+                                if(Math.random() > 0.8) spawnDrop(er.left, er.top, 'war');
+                                e.remove(); l.remove(); clearInterval(lm); score += 10; ptsDisp.innerText = score;
+                            }
+                        });
+                        if(ly > 400) { l.remove(); clearInterval(lm); }
+                    }, 20);
+                });
+            }
+            intervals.push(setInterval(shoot, 600));
+            intervals.push(setInterval(() => {
+                const e = document.createElement('div'); e.className='enemy game-obj'; e.innerText='👾';
+                e.style.top='-30px'; e.style.left=Math.random()*85+'%'; e.style.fontSize='30px';
+                stage.appendChild(e);
+                let ey = -30; let em = setInterval(() => {
+                    ey += (2 + level*0.2); e.style.top = ey + 'px';
+                    if(ey > 400) { e.remove(); clearInterval(em); }
+                }, 20);
+            }, 1000 - (level*20)));
+            window.applyWarPower = (t) => { fireType = t; setTimeout(()=>fireType='normal', 8000); };
+        }
+
+        else if(id === 'car') { // ARABA YARIŞI
+            stage.style.background = "#444";
+            stage.innerHTML = `<div id="mycar" style="position:absolute;bottom:20px;left:140px;font-size:40px;z-index:10">🏎️</div>`;
+            const mycar = stage.querySelector('#mycar');
+            stage.onpointermove = (e) => {
+                let x = e.clientX - stage.getBoundingClientRect().left - 20;
+                mycar.style.left = Math.max(0, Math.min(x, stage.clientWidth - 40)) + 'px';
+            };
+            intervals.push(setInterval(() => {
+                const obs = document.createElement('div'); obs.className='game-obj'; obs.innerText='🚧';
+                obs.style.top='-50px'; obs.style.left=Math.random()*85+'%'; obs.style.fontSize='35px';
+                stage.appendChild(obs);
+                let oy = -50; let om = setInterval(() => {
+                    oy += (5 + level); obs.style.top = oy + 'px';
+                    let cr = mycar.getBoundingClientRect(), or = obs.getBoundingClientRect();
+                    if(or.bottom > cr.top+10 && or.top < cr.bottom-10 && or.left < cr.right-10 && or.right > cr.left+10) {
+                        msg("Çarptın!", false); obs.remove(); clearInterval(om);
+                    }
+                    if(oy > 420) { obs.remove(); clearInterval(om); score+=5; ptsDisp.innerText=score; }
+                }, 20);
+            }, 1000));
+        }
+
+        else if(id === 'run') { // ZIPLA KAÇ
+            stage.innerHTML = `<div id="runner" style="position:absolute;bottom:20px;left:40px;font-size:45px;z-index:10">🏃</div>
+                               <div style="position:absolute;bottom:20px;width:100%;height:4px;background:#555"></div>`;
+            const r = stage.querySelector('#runner'); let jump = false;
+            stage.onpointerdown = () => { if(!jump){ jump=true; r.style.transition='bottom 0.4s'; r.style.bottom='140px'; 
+                setTimeout(()=>{r.style.bottom='20px'; setTimeout(()=>jump=false, 400);}, 400); } 
+            };
+            intervals.push(setInterval(() => {
+                const obs = document.createElement('div'); obs.className='game-obj'; obs.innerText='🌵';
+                obs.style.bottom='20px'; obs.style.left='350px'; obs.style.fontSize='35px';
+                stage.appendChild(obs);
+                let ox = 350; let om = setInterval(() => {
+                    ox -= (6 + level); obs.style.left = ox + 'px';
+                    let rr = r.getBoundingClientRect(), or = obs.getBoundingClientRect();
+                    if(or.left < rr.right-15 && or.right > rr.left+15 && rr.bottom > or.top+10) { msg("Zıpla!", false); }
+                    if(ox < -50) { obs.remove(); clearInterval(om); score+=10; ptsDisp.innerText=score; }
+                }, 20);
+            }, 2000));
+        }
+        
+        // --- KLASİKLER ---
+        else if(id === 'memo') { 
+            let items = ['🐶','🐶','🐱','🐱','🐭','🐭','🐹','🐹'].sort(()=>Math.random()-0.5);
+            let op = []; stage.innerHTML = '<div id="grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:20px"></div>';
+            items.forEach(v => {
+                const t = document.createElement('div'); t.style.cssText="height:60px;background:#eee;display:flex;align-items:center;justify-content:center;font-size:30px;border-radius:10px";
+                t.innerText = '?'; t.onclick = () => {
+                    if(op.length<2 && t.innerText==='?'){ t.innerText=v; op.push(t);
+                        if(op.length===2){ if(op[0].innerText===op[1].innerText){ score+=20; ptsDisp.innerText=score; op=[]; }
+                        else { setTimeout(()=>{op.forEach(x=>x.innerText='?'); op=[];}, 500); } }
+                    }
+                }; stage.querySelector('#grid').appendChild(t);
+            });
+        }
+        else if(id === 'draw') {
+            const can = document.createElement('canvas'); can.width=320; can.height=350; stage.appendChild(can);
+            const ctx = can.getContext('2d'); let dr = false;
+            can.onpointerdown = (e) => { dr=true; ctx.beginPath(); ctx.moveTo(e.offsetX, e.offsetY); };
+            can.onpointermove = (e) => { if(dr){ ctx.lineTo(e.offsetX, e.offsetY); ctx.stroke(); ctx.lineWidth=5; ctx.strokeStyle="#ff007f"; } };
+            window.onpointerup = () => dr=false;
+        }
+        else if(id === 'count') {
+            let n = Math.floor(Math.random()*5)+3;
+            stage.innerHTML = `<div style="font-size:40px;text-align:center;margin:30px">${'🍓'.repeat(n)}</div>`;
+            [n, n+1, n-1].sort(()=>Math.random()-0.5).forEach(a => {
+                const b = document.createElement('button'); b.innerText=a; b.style.cssText="width:80%;margin:10px 10%;padding:15px;background:var(--p);color:white;border:none;border-radius:10px;font-size:20px";
+                b.onclick=()=>{ if(a===n){ score+=10; msg("Aferin!",true); play('count'); } }; stage.appendChild(b);
+            });
+        }
+        else if(id === 'sort') {
+            let c=1; let ns=Array.from({length:12},(_,i)=>i+1).sort(()=>Math.random()-0.5);
+            stage.innerHTML = '<div id="grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:20px"></div>';
+            ns.forEach(n => {
+                const b = document.createElement('div'); b.style.cssText="height:60px;background:#eee;display:flex;align-items:center;justify-content:center;font-size:25px;border-radius:10px";
+                b.innerText=n; b.onclick=()=>{ if(n===c){ b.style.background="#cfc"; c++; if(c>12)play('sort'); } };
+                stage.querySelector('#grid').appendChild(b);
+            });
+        }
+    }
+
+    function spawnDrop(x, y, game) {
+        const drops = game === 'pb' ? ['🔥', '🔫'] : ['💎', '🛡️'];
+        const d = document.createElement('div'); d.className = 'drop';
+        d.innerText = drops[Math.floor(Math.random()*drops.length)];
+        d.style.left = x + 'px'; d.style.top = y + 'px';
+        stage.appendChild(d);
+        let check = setInterval(() => {
+            let dr = d.getBoundingClientRect(), pr = stage.querySelector(game==='pb'?'#pad':'#ship').getBoundingClientRect();
+            if(dr.bottom > pr.top && dr.left < pr.right && dr.right > pr.left) {
+                msg("GÜÇ ALINDI!", true); d.remove(); clearInterval(check);
+                if(game === 'pb') window.applyPbPower(d.innerText);
+                else window.applyWarPower(d.innerText);
+            }
+            if(dr.top > 450) { d.remove(); clearInterval(check); }
+        }, 50);
+    }
+</script>
+</body>
+</html>
